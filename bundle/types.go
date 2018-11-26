@@ -239,11 +239,12 @@ type JobState struct {
 
 // ClusterConfig - Configuration for the cluster.
 type ClusterConfig struct {
-	PullPolicy           string `yaml:"image_pull_policy"`
-	SandboxRole          string `yaml:"sandbox_role"`
-	Namespace            string `yaml:"namespace"`
-	KeepNamespace        bool   `yaml:"keep_namespace"`
-	KeepNamespaceOnError bool   `yaml:"keep_namespace_on_error"`
+	PullPolicy           string   `yaml:"image_pull_policy"`
+	SandboxRole          string   `yaml:"sandbox_role"`
+	Namespace            string   `yaml:"namespace"`
+	KeepNamespace        bool     `yaml:"keep_namespace"`
+	KeepNamespaceOnError bool     `yaml:"keep_namespace_on_error"`
+	NamespacesWhitelist  []string `yaml:"namespaces_whitelist"`
 }
 
 // ClusterConfiguration that should be used by the apb package.

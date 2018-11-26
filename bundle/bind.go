@@ -53,7 +53,7 @@ func (e *executor) Bind(
 		}
 		// Create the podname
 		pn := fmt.Sprintf("bundle-%s", uuid.New())
-		targets := []string{instance.Context.Namespace}
+		targets := append([]string{instance.Context.Namespace}, clusterConfig.NamespacesWhitelist...)
 		labels := map[string]string{
 			"bundle-fqname":   instance.Spec.FQName,
 			"bundle-action":   bindAction,

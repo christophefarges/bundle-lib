@@ -252,7 +252,7 @@ func (k KubernetesClient) CreateRoleBinding(
 	targetNamespace string,
 	roleRef rbac.RoleRef) error {
 
-	log.Infof("Creating RoleBinding %s", roleBindingName)
+	log.Infof("Creating RoleBinding %s on namespace %s for target namespace %s", roleBindingName, namespace, targetNamespace)
 	roleBinding := &rbac.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      roleBindingName,
