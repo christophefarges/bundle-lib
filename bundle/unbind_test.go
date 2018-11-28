@@ -73,6 +73,7 @@ func TestUnbind(t *testing.T) {
 	testCases := []*struct {
 		name            string
 		config          ExecutorConfig
+		clusterConfig   ClusterConfig
 		rt              runtime.MockRuntime
 		si              ServiceInstance
 		bindingID       string
@@ -96,6 +97,47 @@ func TestUnbind(t *testing.T) {
 				mockCommonUnbind(rt, e)
 				rt.On("CreateSandbox",
 					mock.Anything, mock.Anything, []string{"target"},
+					mock.Anything, mock.Anything,
+				).Return("service-account-1", "location", nil)
+
+				rt.On("DeleteExtractedCredential",
+					bID.String(), mock.Anything,
+				).Return(nil)
+			},
+			validateMessage: func(m []StatusMessage) bool {
+				if len(m) != 2 {
+					return false
+				}
+				first := m[0]
+				second := m[1]
+				if first.State != StateInProgress {
+					return false
+				}
+				if second.State != StateSucceeded {
+					return false
+				}
+				return true
+			},
+		},
+		{
+			name:   "unbind successfully",
+			config: ExecutorConfig{},
+			clusterConfig: ClusterConfig{
+				NamespacesWhitelist: []string{"other-target"},
+			},
+			rt: *new(runtime.MockRuntime),
+			si: ServiceInstance{
+				ID:         u,
+				Spec:       spec,
+				Context:    ctx,
+				Parameters: &Parameters{"test-param": true},
+			},
+			bindingID: bID.String(),
+			addExpectations: func(rt *runtime.MockRuntime, e Executor) {
+				mockUnbindExecApb(rt, e, u.String())
+				mockCommonUnbind(rt, e)
+				rt.On("CreateSandbox",
+					mock.Anything, mock.Anything, []string{"target", "other-target"},
 					mock.Anything, mock.Anything,
 				).Return("service-account-1", "location", nil)
 
@@ -248,6 +290,7 @@ func TestUnbind(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			runtime.Provider = &tc.rt
+			clusterConfig = tc.clusterConfig
 			e := NewExecutor(tc.config)
 			if tc.addExpectations != nil {
 				tc.addExpectations(&tc.rt, e)

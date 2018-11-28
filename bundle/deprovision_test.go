@@ -14,6 +14,7 @@ func TestDeprovision(t *testing.T) {
 	testCases := []*struct {
 		name            string
 		config          ExecutorConfig
+		clusterConfig   ClusterConfig
 		rt              runtime.MockRuntime
 		si              ServiceInstance
 		dashboardURL    string
@@ -40,6 +41,55 @@ func TestDeprovision(t *testing.T) {
 			},
 			addExpectations: func(rt *runtime.MockRuntime, e Executor) {
 				rt.On("CreateSandbox", mock.Anything, mock.Anything, []string{"target"}, mock.Anything, mock.Anything).Return("service-account-1", "location", nil)
+				rt.On("GetRuntime").Return("kubernetes")
+				rt.On("CopySecretsToNamespace", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+				rt.On("MasterName", u.String()).Return("new-master-name")
+				rt.On("MasterNamespace").Return("new-masternamespace")
+				rt.On("StateIsPresent", "new-master-name").Return(false, nil)
+				rt.On("RunBundle", mock.Anything).Return(runtime.ExecutionContext{}, nil)
+				rt.On("DeleteState", "new-master-name").Return(nil)
+				rt.On("WatchRunningBundle", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+				rt.On("DestroySandbox", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+				rt.On("DeleteExtractedCredential", u.String(), mock.Anything).Return(nil)
+			},
+			validateMessage: func(m []StatusMessage) bool {
+				if len(m) != 2 {
+					return false
+				}
+				first := m[0]
+				second := m[1]
+				if first.State != StateInProgress {
+					return false
+				}
+				if second.State != StateSucceeded {
+					return false
+				}
+				return true
+			},
+		},
+		{
+			name:   "deprovision successfully with multiple target namespaces",
+			config: ExecutorConfig{},
+			clusterConfig: ClusterConfig{
+				NamespacesWhitelist: []string{"other-target"},
+			},
+			rt: *new(runtime.MockRuntime),
+			si: ServiceInstance{
+				ID: u,
+				Spec: &Spec{
+					ID:      "new-spec-id",
+					Image:   "new-image",
+					FQName:  "new-fq-name",
+					Runtime: 2,
+				},
+				Context: &Context{
+					Namespace: "target",
+					Platform:  "kubernetes",
+				},
+				Parameters: &Parameters{"test-param": true},
+			},
+			addExpectations: func(rt *runtime.MockRuntime, e Executor) {
+				rt.On("CreateSandbox", mock.Anything, mock.Anything, []string{"target", "other-target"}, mock.Anything, mock.Anything).Return("service-account-1", "location", nil)
 				rt.On("GetRuntime").Return("kubernetes")
 				rt.On("CopySecretsToNamespace", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 				rt.On("MasterName", u.String()).Return("new-master-name")
@@ -480,6 +530,7 @@ func TestDeprovision(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			runtime.Provider = &tc.rt
+			clusterConfig = tc.clusterConfig
 			e := NewExecutor(tc.config)
 			if tc.addExpectations != nil {
 				tc.addExpectations(&tc.rt, e)
